@@ -52,11 +52,11 @@ class OResearch:
         
         # Info templates
         self.info_templates = [
-            "I'm OResearch — a lightweight, offline-capable research assistant. I combine NLP, search algorithms, and custom prediction models.",
-            "My name is OResearch, designed to be your research companion with or without internet access. I use advanced language processing.",
-            "OResearch here! I'm a research assistant built to extract and summarize information using AI techniques. I work both online and offline.",
-            "I'm an AI research tool called OResearch. I can search online sources when connected, or use my built-in knowledge base when offline.",
-            "OResearch at your service! I'm a dual-mode research assistant that uses NLP and machine learning to answer your questions."
+            "I'm OResearch — a lightweight, offline-capable research assistant created by sxc_qq1 from YxGG Discord server. I combine NLP, search algorithms, and custom prediction models.",
+            "My name is OResearch, designed by sxc_qq1 from YxGG Discord server to be your research companion with or without internet access. I use advanced language processing.",
+            "OResearch here! Made by sxc_qq1 from YxGG Discord, I'm a research assistant built to extract and summarize information using AI techniques. I work both online and offline.",
+            "I'm an AI research tool called OResearch, developed by sxc_qq1 from YxGG Discord. I can search online sources when connected, or use my built-in knowledge base when offline.",
+            "OResearch at your service! Created by sxc_qq1 from YxGG Discord, I'm a dual-mode research assistant that uses NLP and machine learning to answer your questions."
         ]
         
         # Tutorial templates for step-by-step guides
@@ -92,27 +92,23 @@ class OResearch:
             print(f"{Fore.YELLOW}[ore] Running in basic mode {Fore.RED}(Missing sentence-transformers package)")
 
     def hello(self):
-        """Display startup message with improved formatting"""
-        fish = r"""
-               ,-,
-             .(((^v
-        ,---'\   - 
-       /    ~ \___/
-      /|      /|~|\
-     | |     | |~||
-     | |     | |~|'
-     | |     | |
-     | |     | |
-    """
         print(f"\n{Style.BRIGHT}{Fore.CYAN}" + "~" * 50)
-        print(f"{Fore.CYAN}{fish}")
+        print(f"{Fore.CYAN}               ,-,")
+        print(f"{Fore.CYAN}             .(((^v")
+        print(f"{Fore.CYAN}        ,---'\\   - ")
+        print(f"{Fore.CYAN}       /    ~ \\___/")
+        print(f"{Fore.CYAN}      /|      /|~|\\")
+        print(f"{Fore.CYAN}     | |     | |~||")
+        print(f"{Fore.CYAN}     | |     | |~|'")
+        print(f"{Fore.CYAN}     | |     | |")
+        print(f"{Fore.CYAN}     | |     | |")
         print(f"{Style.BRIGHT}{Fore.WHITE}🔍 {Fore.CYAN}OResearch v2.1{Fore.WHITE} - Advanced Research Assistant")
         print(f"{Fore.CYAN}" + "~" * 50)
         print(f"{Fore.GREEN}[ore] Starting up... {Fore.YELLOW}I'm not perfect, be patient with me")
         if self.offline:
             print(f"{Fore.RED}[ore] ⚠️  Running in OFFLINE mode - using local knowledge only")
-        print(f"{Fore.CYAN}" + "~" * 50 + "\n")
-
+            print(f"{Fore.CYAN}" + "~" * 50 + "\n")
+    
     def is_net(self) -> bool:
         """Check internet connectivity"""
         try:
