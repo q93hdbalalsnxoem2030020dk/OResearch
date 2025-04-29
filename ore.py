@@ -52,11 +52,11 @@ class OResearch:
         
         # Info templates
         self.info_templates = [
-            "I'm OResearch — a lightweight, offline-capable research assistant created by sxc_qq1 from YxGG Discord server. I combine NLP, search algorithms, and custom prediction models.",
-            "My name is OResearch, designed by sxc_qq1 from YxGG Discord server to be your research companion with or without internet access. I use advanced language processing.",
-            "OResearch here! Made by sxc_qq1 from YxGG Discord, I'm a research assistant built to extract and summarize information using AI techniques. I work both online and offline.",
-            "I'm an AI research tool called OResearch, developed by sxc_qq1 from YxGG Discord. I can search online sources when connected, or use my built-in knowledge base when offline.",
-            "OResearch at your service! Created by sxc_qq1 from YxGG Discord, I'm a dual-mode research assistant that uses NLP and machine learning to answer your questions."
+            "I'm ore also known as Open Research Explorer — a lightweight, offline-capable research assistant created by sxc_qq1 from Yx.GG Discord server. I combine NLP, search algorithms, and custom prediction models.",
+            "My name is ore also known as Open Research Explorer, designed by sxc_qq1 from Yx.GG Discord server to be your research companion with or without internet access. I use advanced language processing.",
+            "ore here! Made by sxc_qq1 from YxGG Discord, I'm a research assistant built to extract and summarize information using AI techniques. I work both online and offline.",
+            "I'm an AI research tool called ore or Open Research Explorer, developed by sxc_qq1 from YxGG Discord. I can search online sources when connected, or use my built-in knowledge base when offline.",
+            "ore (Open Research Explorer) at your service! Created by sxc_qq1 from YxGG Discord, I'm a dual-mode research assistant that uses NLP and machine learning to answer your questions."
         ]
         
         # Tutorial templates for step-by-step guides
@@ -102,7 +102,7 @@ class OResearch:
         print(f"{Fore.CYAN}     | |     | |~|'")
         print(f"{Fore.CYAN}     | |     | |")
         print(f"{Fore.CYAN}     | |     | |")
-        print(f"{Style.BRIGHT}{Fore.WHITE}🔍 {Fore.CYAN}OResearch v2.1{Fore.WHITE} - Advanced Research Assistant")
+        print(f"{Style.BRIGHT}{Fore.WHITE}🔍 {Fore.CYAN}OResearch v2.1{Fore.WHITE} - Open Research Explorer (ore)")
         print(f"{Fore.CYAN}" + "~" * 50)
         print(f"{Fore.GREEN}[ore] Starting up... {Fore.YELLOW}I'm not perfect, be patient with me")
         if self.offline:
@@ -644,9 +644,9 @@ class OResearch:
                         self.add_hist(user_input, response, "kb-fallback")
         
         except KeyboardInterrupt:
-            print(f"\n{Fore.GREEN}[ore] OResearch session interrupted. Saving data...")
+            print(f"\n{Fore.GREEN}[ore] ore session interrupted. Saving data...")
             self.save_user()
-            print(f"{Fore.GREEN}[ore] Thank you for using OResearch. Goodbye!")
+            print(f"{Fore.GREEN}[ore] Thank you for using ore Goodbye!")
         
         except Exception as e:
             print(f"\n{Fore.RED}[ore] Error: {str(e)}")
