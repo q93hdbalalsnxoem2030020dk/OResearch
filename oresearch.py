@@ -16,60 +16,48 @@ import threading
 from concurrent.futures import ThreadPoolExecutor
 from colorama import Fore, Back, Style, init
 
-# Initialize colorama
+# Initialize colorama with autoreset to ensure proper color handling
 init(autoreset=True)
 
-# Check if GPU is available for potential acceleration
-has_gpu = torch.cuda.is_available()
+# Global variables for better organization
+HAS_GPU = torch.cuda.is_available()
+EMBED_MODEL = None
+
+# Load NLP pipeline with better error handling
+def load_nlp():
+    try:
+        return spacy.load("en_core_web_sm")
+    except OSError:
+        print(f"[ore] Installing required language model...")
+        import subprocess
+        subprocess.run([
+            "python", "-m", "spacy", "download", "en_core_web_sm"
+        ], check=True)
+        return spacy.load("en_core_web_sm")
 
 # Initialize NLP pipeline
-try:
-    nlp = spacy.load("en_core_web_sm")
-except OSError:
-    print(f"{Fore.YELLOW}[ore] Installing required language model...")
-    import subprocess
-    subprocess.run([
-        "python", "-m", "spacy", "download", "en_core_web_sm"
-    ], check=True)
-    nlp = spacy.load("en_core_web_sm")
+nlp = load_nlp()
 
 class OResearch:
     def __init__(self):
+        # Setup directories and paths
         self.data_dir = os.path.join(os.getcwd(), ".data")
         self.kb_path = os.path.join(self.data_dir, "knowledge_base.json")
         self.user_path = os.path.join(self.data_dir, "user_data.json")
-        self.vectorizer = TfidfVectorizer()
-        
-        # Ensure data directory exists
         os.makedirs(self.data_dir, exist_ok=True)
         
-        # Load knowledge base and user data
+        # Initialize vectorizer for text similarity
+        self.vectorizer = TfidfVectorizer()
+        
+        # Load data files
         self.kb = self.load_kb()
         self.user = self.load_user()
         
         # Check connection status
         self.offline = not self.is_net()
         
-        # Info templates
-        self.info_templates = [
-            "I'm OResearch — a lightweight, offline-capable research assistant. I combine NLP, search algorithms, and custom prediction models.",
-            "My name is OResearch, designed to be your research companion with or without internet access. I use advanced language processing.",
-            "OResearch here! I'm a research assistant built to extract and summarize information using AI techniques. I work both online and offline.",
-            "I'm an AI research tool called OResearch. I can search online sources when connected, or use my built-in knowledge base when offline.",
-            "OResearch at your service! I'm a dual-mode research assistant that uses NLP and machine learning to answer your questions."
-        ]
-        
-        # Tutorial templates for step-by-step guides
-        self.tutorial_templates = [
-            "Here's a step-by-step guide on {}:",
-            "Let me walk you through the process of {}:",
-            "Follow these steps to {}:",
-            "Here's my detailed tutorial on {}:",
-            "A comprehensive guide to {}:"
-        ]
-        
-        # Show startup message
-        self.hello()
+        # Initialize templates
+        self.init_templates()
         
         # Initialize session stats
         self.stats = {
@@ -79,17 +67,44 @@ class OResearch:
             "start_time": datetime.now()
         }
         
+        # Show startup message
+        self.hello()
+        
         # Load embeddings model if available
-        self.embed_model = None
+        self.load_embed_model()
+
+    def init_templates(self):
+        """Initialize response templates"""
+        # About me templates
+        self.info_templates = [
+            "I'm OResearch — a lightweight, offline-capable research assistant. I combine NLP, search algorithms, and custom prediction models.",
+            "My name is OResearch, designed to be your research companion with or without internet access. I use advanced language processing.",
+            "OResearch here! I'm a research assistant built to extract and summarize information using AI techniques. I work both online and offline.",
+            "I'm an AI research tool called OResearch. I can search online sources when connected, or use my built-in knowledge base when offline.",
+            "OResearch at your service! I'm a dual-mode research assistant that uses NLP and machine learning to answer your questions."
+        ]
+        
+        # Tutorial templates
+        self.tutorial_templates = [
+            "Here's a step-by-step guide on {}:",
+            "Let me walk you through the process of {}:",
+            "Follow these steps to {}:",
+            "Here's my detailed tutorial on {}:",
+            "A comprehensive guide to {}:"
+        ]
+
+    def load_embed_model(self):
+        """Load embeddings model if available"""
+        global EMBED_MODEL
         try:
-            if has_gpu:
+            if HAS_GPU:
                 from sentence_transformers import SentenceTransformer
-                self.embed_model = SentenceTransformer('all-MiniLM-L6-v2')
-                print(f"{Fore.GREEN}[ore] Enhanced embeddings model loaded {Fore.CYAN}(GPU accelerated)")
+                EMBED_MODEL = SentenceTransformer('all-MiniLM-L6-v2')
+                print(f"[ore] Enhanced embeddings model loaded (GPU accelerated)")
             else:
-                print(f"{Fore.YELLOW}[ore] Running in basic mode {Fore.RED}(No GPU detected)")
+                print(f"[ore] Running in basic mode (No GPU detected)")
         except ImportError:
-            print(f"{Fore.YELLOW}[ore] Running in basic mode {Fore.RED}(Missing sentence-transformers package)")
+            print(f"[ore] Running in basic mode (Missing sentence-transformers package)")
 
     def hello(self):
         """Display startup message with improved formatting"""
@@ -104,17 +119,17 @@ class OResearch:
      | |     | |
      | |     | |
     """
-        print(f"\n{Style.BRIGHT}{Fore.CYAN}" + "~" * 50)
-        print(f"{Fore.CYAN}{fish}")
-        print(f"{Style.BRIGHT}{Fore.WHITE}🔍 {Fore.CYAN}OResearch v2.1{Fore.WHITE} - Advanced Research Assistant")
-        print(f"{Fore.CYAN}" + "~" * 50)
-        print(f"{Fore.GREEN}[ore] Starting up... {Fore.YELLOW}I'm not perfect, be patient with me")
+        print("\n" + "~" * 50)
+        print(fish)
+        print("🔍 OResearch v2.1 - Advanced Research Assistant")
+        print("~" * 50)
+        print("[ore] Starting up... I'm not perfect, be patient with me")
         if self.offline:
-            print(f"{Fore.RED}[ore] ⚠️  Running in OFFLINE mode - using local knowledge only")
-        print(f"{Fore.CYAN}" + "~" * 50 + "\n")
+            print("[ore] ⚠️  Running in OFFLINE mode - using local knowledge only")
+        print("~" * 50 + "\n")
 
     def is_net(self) -> bool:
-        """Check internet connectivity"""
+        """Check internet connectivity more efficiently"""
         try:
             # Try multiple DNS servers for reliability
             for dns in ["8.8.8.8", "1.1.1.1"]:
@@ -122,66 +137,90 @@ class OResearch:
                 return True
         except OSError:
             return False
+        return False
 
     def type(self, text: str, speed: float = 0.01):
         """Print text with typewriter effect"""
+        # Remove color codes for length calculation
+        clean_text = text
+        for color in vars(Fore).values():
+            if isinstance(color, str):
+                clean_text = clean_text.replace(color, '')
+        
         for char in text:
             print(char, end='', flush=True)
             time.sleep(speed)
         print()
 
     def gen_ctx(self, text: str) -> str:
-        """Extract meaningful context from user input using advanced NLP"""
+        """Extract meaningful context from user input - IMPROVED ALGORITHM"""
         doc = nlp(text)
         
-        # Extract entities first
-        entities = [ent.text for ent in doc.ents]
+        # IMPROVED: Weighted token extraction for better relevance
+        context_elements = []
         
-        # Check for tutorial keywords
-        is_tutorial = any(word in text.lower() for word in ["how to", "tutorial", "guide", "steps", "learn", "teach me"])
+        # Check for tutorial intent with broader matching
+        tutorial_phrases = ["how to", "tutorial", "guide", "steps", "learn", 
+                          "teach me", "explain how", "instructions for", "procedure"]
+        is_tutorial = any(phrase in text.lower() for phrase in tutorial_phrases)
         
-        # Advanced keyword extraction based on part-of-speech and dependencies
-        keywords = []
+        # Process named entities with higher weight
+        entities = [(ent.text.lower(), 3.0) for ent in doc.ents]
+        entity_texts = [e[0] for e in entities]
         
-        # Extract subject-verb-object triplets for richer context
+        # Extract topical nouns (subjects and objects)
+        nouns = []
         for token in doc:
-            # Get main verbs and their direct objects
-            if token.dep_ == "ROOT" and token.pos_ == "VERB":
-                keywords.append(token.lemma_)
-                # Look for the object of this verb
-                for child in token.children:
-                    if child.dep_ in ["dobj", "pobj"] and not child.is_stop:
-                        keywords.append(child.text)
+            # Get important noun phrases with syntactic role
+            if token.pos_ in ('NOUN', 'PROPN') and len(token.text) > 2:
+                weight = 1.0
+                
+                # Increase weight for subjects and objects
+                if token.dep_ in ('nsubj', 'dobj', 'pobj'):
+                    weight = 2.0
+                    
+                # Only add if not already covered by entities
+                if token.text.lower() not in entity_texts:
+                    nouns.append((token.text.lower(), weight))
         
-        # Extract important nouns and adjectives
-        important_tokens = [token.lemma_ for token in doc if (
-            token.pos_ in ('NOUN', 'PROPN', 'ADJ') and 
-            not token.is_stop and
-            len(token.text) > 2
-        )]
-        
-        # Add key nouns and adjectives
-        keywords.extend(important_tokens)
-        
-        # Combine entities and keywords, prioritizing entities
-        all_context = entities + [k for k in keywords if k not in entities]
-        
-        # For tutorials, add special marker to signal tutorial format is needed
-        if is_tutorial:
-            all_context.insert(0, "TUTORIAL")
+        # Extract main verbs and relevant adjectives
+        verbs_and_adjs = []
+        for token in doc:
+            # Main verbs (not auxiliaries)
+            if token.pos_ == 'VERB' and token.dep_ in ('ROOT', 'xcomp') and not token.is_stop:
+                verbs_and_adjs.append((token.lemma_, 1.5))
             
-        # Filter duplicates while preserving order
+            # Descriptive adjectives
+            elif token.pos_ == 'ADJ' and len(token.text) > 2:
+                # Check if it modifies an important noun
+                if token.head.pos_ in ('NOUN', 'PROPN'):
+                    verbs_and_adjs.append((token.text.lower(), 1.0))
+        
+        # Combine all elements with weights
+        all_elements = entities + nouns + verbs_and_adjs
+        
+        # Sort by weight (descending)
+        all_elements.sort(key=lambda x: x[1], reverse=True)
+        
+        # Extract just the text values
+        context_elements = [item[0] for item in all_elements]
+        
+        # Remove duplicates while preserving order
         seen = set()
         filtered_context = []
-        for item in all_context:
-            if item.lower() not in seen:
+        for item in context_elements:
+            if item not in seen:
                 filtered_context.append(item)
-                seen.add(item.lower())
+                seen.add(item)
+        
+        # Add tutorial marker if needed
+        if is_tutorial and filtered_context:
+            return "TUTORIAL " + " ".join(filtered_context)
         
         return " ".join(filtered_context)
 
     def load_kb(self) -> Dict:
-        """Load knowledge base from file"""
+        """Load knowledge base from file with error handling"""
         if not os.path.exists(self.kb_path):
             default_kb = {
                 "oresearch": {
@@ -199,12 +238,12 @@ class OResearch:
             with open(self.kb_path, "r") as file:
                 return json.load(file)
         except json.JSONDecodeError:
-            print(f"{Fore.RED}[ore] Error: Knowledge base file corrupted. Creating new one.")
+            print("[ore] Error: Knowledge base file corrupted. Creating new one.")
             os.rename(self.kb_path, f"{self.kb_path}.bak")
             return {}
 
     def load_user(self) -> Dict:
-        """Load user data and preferences"""
+        """Load user data and preferences with error handling"""
         if not os.path.exists(self.user_path):
             default_user = {
                 "history": [],
@@ -221,7 +260,7 @@ class OResearch:
             with open(self.user_path, "r") as file:
                 return json.load(file)
         except json.JSONDecodeError:
-            print(f"{Fore.RED}[ore] Error: User data file corrupted. Creating new one.")
+            print("[ore] Error: User data file corrupted. Creating new one.")
             os.rename(self.user_path, f"{self.user_path}.bak")
             return {
                 "history": [],
@@ -237,7 +276,7 @@ class OResearch:
             json.dump(self.kb, file, indent=2)
 
     def save_user(self):
-        """Save user data to file"""
+        """Save user data to file with history management"""
         # Limit history size
         max_history = self.user["prefs"]["max_history"]
         if len(self.user["history"]) > max_history:
@@ -260,52 +299,55 @@ class OResearch:
             self.save_user()
 
     def kb_search(self, context: str) -> str:
-        """Search for answers in offline knowledge base"""
+        """Improved search for answers in offline knowledge base"""
+        is_tutorial = context.startswith("TUTORIAL")
+        search_context = context.replace("TUTORIAL", "", 1).strip() if is_tutorial else context
+        
+        # Try direct key lookup first (case insensitive)
+        for key, entry in self.kb.items():
+            if key.lower() == search_context.lower():
+                response = random.choice(entry.get("responses", ["No answer available."]))
+                return self.format_tutorial(search_context, response) if is_tutorial else response
+        
+        # Search by similarity
         best_match = None
         best_score = 0
         
-        # Check if this is a tutorial request
-        is_tutorial = context.startswith("TUTORIAL")
-        if is_tutorial:
-            # Remove the TUTORIAL marker for matching
-            context = context.replace("TUTORIAL", "", 1).strip()
+        # Prepare context tokens for better matching
+        context_tokens = set(search_context.lower().split())
         
-        # Try direct key lookup first
-        if context.lower() in self.kb:
-            entry = self.kb[context.lower()]
-            response = random.choice(entry.get("responses", ["No answer available."]))
-            
-            # Format as tutorial if needed
-            if is_tutorial:
-                return self.format_tutorial(context, response)
-            return response
-            
-        # Otherwise, search through all questions
+        # Search through all questions
         for topic, entry in self.kb.items():
             questions = entry.get("question", [])
             
-            # Calculate similarity scores
+            # Calculate similarity scores for each question
             for q in questions:
-                # Simple substring match
-                if context.lower() in q.lower() or q.lower() in context.lower():
-                    score = len(set(context.lower().split()) & set(q.lower().split())) / max(len(context.split()), len(q.split()))
+                q_tokens = set(q.lower().split())
+                
+                # Calculate overlap score
+                if context_tokens and q_tokens:
+                    # Jaccard similarity
+                    overlap = len(context_tokens & q_tokens)
+                    union = len(context_tokens | q_tokens)
+                    score = overlap / union if union > 0 else 0
                     
+                    # Boost score for substring matches
+                    if search_context.lower() in q.lower() or q.lower() in search_context.lower():
+                        score += 0.2
+                        
                     if score > best_score:
                         best_score = score
                         best_match = entry
         
         # Return best match if score is above threshold
-        if best_match and best_score > 0.3:
+        if best_match and best_score > 0.25:
             response = random.choice(best_match.get("responses", ["No specific information available."]))
-            
-            # Format as tutorial if needed
-            if is_tutorial:
-                return self.format_tutorial(context, response)
-            return response
+            return self.format_tutorial(search_context, response) if is_tutorial else response
         
+        # No good match found
         if is_tutorial:
-            return f"Sorry, I couldn't find a tutorial on {context} in my offline knowledge base."
-        return f"{Fore.YELLOW}Sorry, I couldn't find anything in my offline knowledge base."
+            return f"Sorry, I couldn't find a tutorial on {search_context} in my offline knowledge base."
+        return "Sorry, I couldn't find anything in my offline knowledge base."
 
     def format_tutorial(self, topic: str, content: str) -> str:
         """Format content as a step-by-step tutorial"""
@@ -316,29 +358,31 @@ class OResearch:
         sentences = [s.strip() for s in content.split('.') if s.strip()]
         
         # Build tutorial
-        tutorial = f"{Fore.CYAN}{template}\n\n"
+        tutorial = f"{template}\n\n"
         
         # If we have enough content, format as steps
         if len(sentences) >= 3:
             for i, sentence in enumerate(sentences, 1):
-                tutorial += f"{Fore.GREEN}{i}. {Fore.WHITE}{sentence}.\n"
+                tutorial += f"{i}. {sentence}.\n"
         else:
             # Not enough content to make good steps, just use the original
-            tutorial += f"{Fore.WHITE}{content}\n"
+            tutorial += f"{content}\n"
             
         return tutorial
 
     def is_about_me(self, text: str) -> bool:
-        """Check if the query is about the bot itself"""
+        """Improved check if the query is about the bot itself"""
         # Normalized input for better matching
         norm_text = text.lower()
         
-        # Bot-related keywords
+        # Bot-related keywords - expanded list
         bot_keywords = [
             "who are you", "what are you", "your name", "what is oresearch", 
             "about oresearch", "tell me about yourself", "what can you do",
             "how do you work", "your capabilities", "what's oresearch",
-            "who made you", "your creator", "your purpose", "introduce yourself"
+            "who made you", "your creator", "your purpose", "introduce yourself",
+            "tell me about oresearch", "what do you do", "your function", 
+            "help me understand what you are", "describe yourself"
         ]
         
         # Check for direct matches
@@ -346,7 +390,7 @@ class OResearch:
             if keyword in norm_text:
                 return True
                 
-        # More sophisticated check using NLP
+        # NLP-based detection
         doc = nlp(norm_text)
         
         # Check for second-person pronouns combined with question words
@@ -370,20 +414,21 @@ class OResearch:
         caps.append("access my local knowledge base")
         caps.append("learn from our interactions to improve future responses")
         
-        if self.embed_model:
+        if EMBED_MODEL:
             caps.append("use neural embeddings for semantic understanding")
         
         # Format response with capabilities
         caps_text = ", ".join(caps[:-1]) + f" and {caps[-1]}" if len(caps) > 1 else caps[0]
         
-        response = f"{Fore.CYAN}{base}\n\n{Fore.GREEN}I can {caps_text}."
+        response = f"{base}\n\n"
+        response += f"I can {caps_text}."
         
         # Add session stats for a more dynamic feel
         session_time = datetime.now() - self.stats["start_time"]
         minutes = int(session_time.total_seconds() / 60)
         
         if self.stats["queries"] > 0:
-            response += f"\n\n{Fore.YELLOW}In our current session ({minutes} minutes), I've answered {self.stats['queries']} queries."
+            response += f"\n\nIn our current session ({minutes} minutes), I've answered {self.stats['queries']} queries."
         
         return response
 
@@ -391,7 +436,7 @@ class OResearch:
         """Search using DuckDuckGo"""
         try:
             response = requests.get(
-                f"https://api.duckduckgo.com/",
+                "https://api.duckduckgo.com/",
                 params={"q": query, "format": "json"},
                 timeout=5
             )
@@ -417,11 +462,11 @@ class OResearch:
             
             return None
         except Exception as e:
-            print(f"{Fore.RED}[ore] DuckDuckGo search error: {e}")
+            print(f"[ore] DuckDuckGo search error: {e}")
             return None
 
     def wiki_search(self, query: str) -> str:
-        """Search using Wikipedia"""
+        """Search using Wikipedia with better error handling"""
         try:
             # First try to get direct page
             try:
@@ -436,20 +481,20 @@ class OResearch:
                     return wikipedia.summary(results[0], sentences=3)
                 return "Wikipedia has no results for this query."
         except Exception as e:
-            print(f"{Fore.RED}[ore] Wikipedia search error: {e}")
+            print(f"[ore] Wikipedia search error: {e}")
             return "Error retrieving information from Wikipedia."
 
     def analyze(self, articles: List[str], context: str) -> str:
-        """Analyze and find most relevant article"""
+        """Analyze and find most relevant article with improved semantic matching"""
         if not articles:
             return "No valid articles to analyze."
             
-        # Use embeddings model if available for better semantic matching
-        if self.embed_model:
+        # Use embeddings model if available
+        if EMBED_MODEL:
             try:
                 # Get embeddings
-                query_embed = self.embed_model.encode([context])[0]
-                article_embeds = self.embed_model.encode(articles)
+                query_embed = EMBED_MODEL.encode([context])[0]
+                article_embeds = EMBED_MODEL.encode(articles)
                 
                 # Calculate cosine similarity
                 similarities = cosine_similarity([query_embed], article_embeds)[0]
@@ -459,73 +504,106 @@ class OResearch:
                     return articles[best_idx]
                 return "No highly relevant content found."
             except Exception as e:
-                print(f"{Fore.RED}[ore] Embeddings error: {e}")
-                # Fall back to TF-IDF if embeddings fail
+                print(f"[ore] Embeddings error: {e}")
+                # Fall back to TF-IDF
         
-        # TF-IDF fallback
+        # TF-IDF fallback with error handling
         try:
             vectors = self.vectorizer.fit_transform([context] + articles)
             sims = cosine_similarity(vectors[0:1], vectors[1:]).flatten()
             best_idx = np.argmax(sims)
             return articles[best_idx] if sims[best_idx] > 0.2 else "No relevant content found."
         except Exception as e:
-            print(f"{Fore.RED}[ore] TF-IDF error: {e}")
-            if articles:
-                # Return first article if all else fails
-                return articles[0]
-            return "Error analyzing the content."
+            print(f"[ore] TF-IDF error: {e}")
+            # Return first article if all else fails
+            return articles[0] if articles else "Error analyzing the content."
 
     def learn(self, query: str, response: str):
-        """Learn from successful interactions to improve future responses"""
-        # Extract keywords for categorization
+        """Improved learning algorithm for better knowledge acquisition"""
+        # Only learn meaningful content
+        if not query or not response or len(response) < 20:
+            return
+            
+        # Extract keywords for better categorization
         keywords = self.gen_ctx(query)
         
-        # Check if this is a new knowledge entry
-        if keywords and response and len(response) > 20:
-            # Use the first keyword as a simple topic identifier
-            topic = keywords.split()[0] if keywords.split() else keywords
+        if not keywords:
+            return
             
-            if topic not in self.kb:
-                self.kb[topic] = {
-                    "question": [query],
-                    "responses": [response]
-                }
-            else:
-                # Update existing knowledge
-                if query not in self.kb[topic]["question"]:
-                    self.kb[topic]["question"].append(query)
-                if response not in self.kb[topic]["responses"]:
-                    self.kb[topic]["responses"].append(response)
+        # Create a better topic key - use first two keywords for more specificity
+        key_words = keywords.split()
+        if len(key_words) >= 2:
+            topic = f"{key_words[0]}_{key_words[1]}"
+        else:
+            topic = key_words[0]
             
-            # Save periodically
-            if random.random() < 0.2:  # 20% chance to save
-                self.save_kb()
+        # Create new entry or update existing one
+        if topic not in self.kb:
+            self.kb[topic] = {
+                "question": [query],
+                "responses": [response]
+            }
+        else:
+            # Check similarity before adding
+            questions = self.kb[topic]["question"]
+            responses = self.kb[topic]["responses"]
+            
+            # Only add if not too similar to existing entries
+            if not any(self.text_similarity(query, q) > 0.8 for q in questions):
+                self.kb[topic]["question"].append(query)
+                
+            if not any(self.text_similarity(response, r) > 0.8 for r in responses):
+                self.kb[topic]["responses"].append(response)
+        
+        # Save periodically with reduced frequency
+        if random.random() < 0.2:  # 20% chance to save
+            self.save_kb()
+
+    def text_similarity(self, text1: str, text2: str) -> float:
+        """Calculate text similarity for deduplication"""
+        # Simple word overlap for speed
+        words1 = set(text1.lower().split())
+        words2 = set(text2.lower().split())
+        
+        if not words1 or not words2:
+            return 0.0
+            
+        intersection = words1.intersection(words2)
+        union = words1.union(words2)
+        
+        return len(intersection) / len(union)
 
     def net_search(self, query: str, context: str) -> Dict:
-        """Search online using multiple sources in parallel"""
+        """Search online using multiple sources in parallel with improved coordination"""
         results = {"content": None, "source": None}
         
         def duck_search():
             return {"content": self.ddg_search(query), "source": "DuckDuckGo"}
             
         def wiki_search():
-            return {"content": self.wiki_search(context), "source": "Wikipedia"}
+            # Use the most relevant part of the context for wiki search
+            search_terms = context.split()[:3]  # First three keywords
+            wiki_query = " ".join(search_terms) if search_terms else context
+            return {"content": self.wiki_search(wiki_query), "source": "Wikipedia"}
         
-        # Execute searches in parallel
+        # Execute searches in parallel for efficiency
         with ThreadPoolExecutor(max_workers=2) as executor:
             duck_future = executor.submit(duck_search)
             wiki_future = executor.submit(wiki_search)
             
-            # Get DuckDuckGo results
+            # Get results and select best one
             duck_result = duck_future.result()
+            wiki_result = wiki_future.result()
+            
+            # Prioritize DuckDuckGo if it has content
             if duck_result["content"]:
                 results = duck_result
-            else:
-                # Fall back to Wikipedia
-                wiki_result = wiki_future.result()
+            elif wiki_result["content"]:
                 results = wiki_result
+            else:
+                results = {"content": "I couldn't find relevant information from my sources.", "source": "None"}
                 
-        # Check if result is for a tutorial request
+        # Format tutorial if needed
         if context.startswith("TUTORIAL") and results["content"]:
             tutorial_topic = context.replace("TUTORIAL", "", 1).strip()
             results["content"] = self.format_tutorial(tutorial_topic, results["content"])
@@ -533,17 +611,22 @@ class OResearch:
         return results
 
     def run(self):
-        """Main interaction loop"""
+        """Main interaction loop with improved UX"""
         try:
             while True:
-                user_input = input(f"\n{Fore.CYAN}You: {Fore.WHITE}")
+                print()  # Add space for readability
+                user_input = input("You: ")
+                
+                # Skip empty inputs
+                if not user_input.strip():
+                    continue
                 
                 # Update stats
                 self.stats["queries"] += 1
                 
                 # Check for exit command
-                if user_input.lower() in ["exit", "quit", "bye"]:
-                    self.type(f"{Fore.GREEN}Thank you for using OResearch. Goodbye!")
+                if user_input.lower() in ["exit", "quit", "bye", "goodbye"]:
+                    self.type("Thank you for using OResearch. Goodbye!")
                     self.save_user()  # Save data before exiting
                     break
                 
@@ -561,13 +644,13 @@ class OResearch:
                 if self.offline != (not self.is_net()):
                     self.offline = not self.is_net()
                     if self.offline:
-                        print(f"{Fore.RED}[ore] ⚠️ Connection lost. Switching to offline mode.")
+                        print("[ore] ⚠️ Connection lost. Switching to offline mode.")
                     else:
-                        print(f"{Fore.GREEN}[ore] ✓ Connection restored. Online search available.")
+                        print("[ore] ✓ Connection restored. Online search available.")
                 
                 # Handle offline mode
                 if self.offline:
-                    print(f"{Fore.YELLOW}[ore] Searching local knowledge base...")
+                    print("[ore] Searching local knowledge base...")
                     self.stats["offline"] += 1
                     response = self.kb_search(context)
                     self.type(response, speed=self.user["prefs"]["type_speed"])
@@ -575,7 +658,7 @@ class OResearch:
                     continue
                 
                 # Online search
-                print(f"{Fore.GREEN}[ore] Searching online sources...")
+                print("[ore] Searching online sources...")
                 self.stats["online"] += 1
                 
                 # Show spinner on a separate thread
@@ -584,7 +667,7 @@ class OResearch:
                     spinner = ['⣾', '⣽', '⣻', '⢿', '⡿', '⣟', '⣯', '⣷']
                     i = 0
                     while not stop_spinner.is_set():
-                        print(f"\r{Fore.CYAN}[ore] Searching {spinner[i % len(spinner)]}", end='')
+                        print(f"\r[ore] Searching {spinner[i % len(spinner)]}", end='')
                         i += 1
                         time.sleep(0.1)
                     print("\r", end='')  # Clear spinner line
@@ -601,7 +684,7 @@ class OResearch:
                     spinner_thread.join()
                     
                     if search_result["content"]:
-                        print(f"{Fore.GREEN}[ore] Found information from {search_result['source']}:")
+                        print(f"[ore] Found information from {search_result['source']}:")
                         self.type(search_result["content"], speed=self.user["prefs"]["type_speed"])
                         
                         # Learn from this interaction
@@ -610,23 +693,23 @@ class OResearch:
                         # Update history
                         self.add_hist(user_input, search_result["content"], search_result["source"])
                     else:
-                        print(f"{Fore.YELLOW}[ore] No relevant information found online.")
-                        self.type(f"{Fore.YELLOW}I couldn't find relevant information. Try rephrasing your question.")
+                        print("[ore] No relevant information found online.")
+                        self.type("I couldn't find relevant information. Try rephrasing your question.")
                 except Exception as e:
                     # Stop spinner in case of error
                     stop_spinner.set()
-                    spinner_thread.join()
+                    if spinner_thread.is_alive():
+                        spinner_thread.join()
                     
-                    print(f"{Fore.RED}[ore] Error during search: {e}")
-                    self.type(f"{Fore.RED}Sorry, I encountered an error while searching. Please try again.")
+                    print(f"[ore] Error during search: {e}")
+                    self.type("Sorry, I encountered an error while searching. Please try again.")
         
         except KeyboardInterrupt:
-            print(f"\n{Fore.YELLOW}[ore] Session interrupted. Saving data...")
+            print("\n[ore] Session interrupted. Saving data...")
             self.save_user()
             self.save_kb()
-            print(f"{Fore.GREEN}[ore] Thank you for using OResearch. Goodbye!")
+            print("[ore] Thank you for using OResearch. Goodbye!")
 
 if __name__ == '__main__':
     bot = OResearch()
     bot.run()
-     
