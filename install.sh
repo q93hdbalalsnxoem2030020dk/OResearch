@@ -39,7 +39,7 @@ url="https://www.mediafire.com/file/op39n9w0sbc74yh/knowledge_base.json/file"
 if [[ ! -f "$file" ]]; then
   echo
   echo "----------------------------------------------------------"
-  echo "The file 'knowledge_base.json' (~500MB) is required."
+  echo "The file 'knowledge_base.json' (~500MB) is required for offline mode"
   echo "Please download it manually from:"
   echo "  $url"
   echo
@@ -61,7 +61,7 @@ if [[ ! -f "$file" ]]; then
   fi
 
   while [[ ! -f "$file" ]]; do
-    read -rp "Waiting for 'knowledge_base.json'... Press Enter once placed in .data/"
+    read -rp "Waiting for 'knowledge_base.json'... Press Enter once placed in .data/ or CTRL+C to skip this."
   done
   echo "✔ File detected."
 else
