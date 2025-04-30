@@ -16,7 +16,7 @@ if ! command -v pip3 &>/dev/null; then
   ln -sf "$(command -v pip)" /usr/bin/pip3
 fi
 
-packages=(requests beautifulsoup4 wikipedia spacy torch numpy scikit-learn colorama nltk transformers)
+packages=(requests beautifulsoup4 wikipedia spacy torch numpy scikit-learn colorama transformers tensorflow keras bs4)
 for pkg in "${packages[@]}"; do
   if ! pip3 show "$pkg" &>/dev/null; then
     pip3 install "$pkg"
@@ -31,8 +31,6 @@ if ! python3 -c "import spacy; spacy.load('$model')" &>/dev/null; then
 else
   echo "✔ spaCy model $model is already installed"
 fi
-
-mkdir -p .data
 file=".data/knowledge_base.json"
 url="https://www.mediafire.com/file/op39n9w0sbc74yh/knowledge_base.json/file"
 
