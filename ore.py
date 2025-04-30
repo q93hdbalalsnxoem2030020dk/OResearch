@@ -1,3 +1,18 @@
+"""
+Copyright (c) 2025 sxc_qq1 (ore)
+
+This software (oresearch) is licensed for **personal, non-commercial use only**.
+You are **not permitted** to:
+- Modify, edit, or reverse-engineer any part of the code.
+- Redistribute or publish any portion of the source code or its derivatives.
+- Use this code for training, commercial deployment, or integration into any other software.
+
+By using this script, you agree to these terms.
+
+Violation of this license may result in permanent revocation of use, and legal actions may be taken where applicable.
+For inquiries or special permission, contact: sunshinexjuhari@protonmail.com
+"""
+
 import os
 import json
 import time
@@ -15,21 +30,6 @@ import random
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from colorama import Fore, Back, Style, init
-
-"""
-Copyright (c) 2025 sxc_qq1 (ore)
-
-This software (oresearch) is licensed for **personal, non-commercial use only**.
-You are **not permitted** to:
-- Modify, edit, or reverse-engineer any part of the code.
-- Redistribute or publish any portion of the source code or its derivatives.
-- Use this code for training, commercial deployment, or integration into any other software.
-
-By using this script, you agree to these terms.
-
-Violation of this license may result in permanent revocation of use, and legal actions may be taken where applicable.
-For inquiries or special permission, contact: sunshinexjuhari@protonmail.com
-"""
 
 init(autoreset=True, convert=True)
 has_gpu = torch.cuda.is_available()
