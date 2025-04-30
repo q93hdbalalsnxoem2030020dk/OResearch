@@ -17,3 +17,5 @@ simple chatbot, offline & online.
 ```
 git clone https://github.com/q93hdbalalsnxoem2030020dk/ore/; cd ore; bash install.sh; python ore.py
 ```
+
+to use offline mode, you have to download a file that contains 3 million of lines (616mb) manually, start download by typing ``bash install.sh``
