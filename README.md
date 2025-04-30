@@ -1,5 +1,5 @@
 # ore
-This script sets up everything you need to run ore
+simple chatbot, offline & online.
 
 ## What it does
 
