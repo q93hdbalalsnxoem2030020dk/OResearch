@@ -16,7 +16,7 @@ if ! command -v pip3 &>/dev/null; then
   ln -sf "$(command -v pip)" /usr/bin/pip3
 fi
 
-packages=(requests beautifulsoup4 wikipedia spacy torch numpy scikit-learn colorama ntlk transformers)
+packages=(requests beautifulsoup4 wikipedia spacy torch numpy scikit-learn colorama nltk transformers)
 for pkg in "${packages[@]}"; do
   if ! pip3 show "$pkg" &>/dev/null; then
     pip3 install "$pkg"
